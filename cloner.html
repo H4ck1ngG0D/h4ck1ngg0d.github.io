@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website Cloner - ウェブサイトコピーツール</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: fadeInDown 1s ease-out;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .main-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.2);
+            animation: fadeInUp 1s ease-out 0.3s both;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: rgba(255,255,255,0.8);
+            background: rgba(255,255,255,0.2);
+        }
+
+        .input-group input::placeholder {
+            color: rgba(255,255,255,0.7);
+        }
+
+        .clone-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .clone-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+
+        .clone-btn:disabled {
+            background: rgba(255,255,255,0.3);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress-section {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .progress-text {
+            text-align: center;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .status-log {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            opacity: 0.9;
+        }
+
+        .log-success { color: #4ade80; }
+        .log-error { color: #f87171; }
+        .log-info { color: #60a5fa; }
+
+        .results-section {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .download-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, #4ade80, #22c55e);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4ade80;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .feature-list {
+            margin-top: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .feature-item {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .feature-item:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Website Cloner</h1>
+            <p>完全なウェブサイトコピーツール - HTML、CSS、JS、画像まで全て取得</p>
+        </div>
+
+        <div class="main-card">
+            <div class="input-section">
+                <div class="input-group">
+                    <input type="url" id="urlInput" placeholder="https://example.com - クローンしたいウェブサイトのURLを入力" required>
+                </div>
+                <button class="clone-btn" id="cloneBtn" onclick="startCloning()">
+                    <span id="cloneText">🔥 サイトをクローン開始</span>
+                </button>
+            </div>
+
+            <div class="progress-section" id="progressSection">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text" id="progressText">準備中...</div>
+                <div class="status-log" id="statusLog"></div>
+            </div>
+
+            <div class="results-section" id="resultsSection">
+                <button class="download-btn" id="downloadBtn" onclick="downloadZip()">
+                    💾 ZIPファイルをダウンロード
+                </button>
+                <div class="stats" id="stats"></div>
+            </div>
+
+            <div class="feature-list">
+                <div class="feature-item">
+                    <div class="feature-icon">📄</div>
+                    <h3>HTML解析</h3>
+                    <p>完全なHTML構造とメタデータを取得</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🎨</div>
+                    <h3>CSS & Assets</h3>
+                    <p>スタイルシート、画像、フォントを全て収集</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">⚡</div>
+                    <h3>JavaScript</h3>
+                    <p>外部・内部スクリプトファイルを完全取得</p>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">📦</div>
+                    <h3>ZIP出力</h3>
+                    <p>GitHub Pages対応の完璧な構造でパッケージ</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let zip = new JSZip();
+        let downloadedFiles = new Set();
+        let stats = {
+            html: 0,
+            css: 0,
+            js: 0,
+            images: 0,
+            other: 0,
+            errors: 0
+        };
+
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('statusLog');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function updateProgress(percent, text) {
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('progressText').textContent = text;
+        }
+
+        function updateStats() {
+            const statsContainer = document.getElementById('stats');
+            statsContainer.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${stats.html}</div>
+                    <div class="stat-label">HTML Files</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.css}</div>
+                    <div class="stat-label">CSS Files</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.js}</div>
+                    <div class="stat-label">JS Files</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.images}</div>
+                    <div class="stat-label">Images</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.other}</div>
+                    <div class="stat-label">Other Files</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.errors}</div>
+                    <div class="stat-label">Errors</div>
+                </div>
+            `;
+        }
+
+        function getFileExtension(url) {
+            try {
+                const pathname = new URL(url).pathname;
+                const match = pathname.match(/\.([^.]+)$/);
+                return match ? match[1].toLowerCase() : '';
+            } catch {
+                return '';
+            }
+        }
+
+        function getFileType(url, mimeType = '') {
+            const ext = getFileExtension(url);
+            
+            if (ext === 'html' || ext === 'htm' || mimeType.includes('text/html')) return 'html';
+            if (ext === 'css' || mimeType.includes('text/css')) return 'css';
+            if (ext === 'js' || mimeType.includes('javascript')) return 'js';
+            if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'ico'].includes(ext) || mimeType.startsWith('image/')) return 'images';
+            
+            return 'other';
+        }
+
+        function normalizeUrl(url, baseUrl) {
+            try {
+                return new URL(url, baseUrl).href;
+            } catch {
+                return null;
+            }
+        }
+
+        function getLocalPath(url, baseUrl) {
+            try {
+                const urlObj = new URL(url);
+                const baseUrlObj = new URL(baseUrl);
+                
+                if (urlObj.origin !== baseUrlObj.origin) {
+                    // 外部リソースの場合、ドメイン名をフォルダとして使用
+                    const domain = urlObj.hostname.replace(/[^a-zA-Z0-9]/g, '_');
+                    return `external/${domain}${urlObj.pathname}${urlObj.search}`;
+                }
+                
+                let path = urlObj.pathname;
+                if (path === '/' || path === '') path = '/index.html';
+                if (!getFileExtension(path) && !path.endsWith('/')) {
+                    path += '.html';
+                }
+                
+                return path.startsWith('/') ? path.substring(1) : path;
+            } catch {
+                return `assets/${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            }
+        }
+
+        async function fetchWithRetry(url, options = {}, retries = 3) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    // プロキシサービスを使用してCORSを回避
+                    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+                    const response = await fetch(proxyUrl, {
+                        ...options,
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                            ...options.headers
+                        }
+                    });
+                    
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response;
+                } catch (error) {
+                    if (i === retries - 1) throw error;
+                    await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+                }
+            }
+        }
+
+        function extractResourceUrls(content, baseUrl, contentType = '') {
+            const urls = new Set();
+            
+            if (contentType.includes('text/html') || contentType === '') {
+                // HTML から URL を抽出
+                const patterns = [
+                    /href=["']([^"']+)["']/gi,
+                    /src=["']([^"']+)["']/gi,
+                    /url\(["']?([^"')]+)["']?\)/gi,
+                    /import\s+["']([^"']+)["']/gi,
+                    /@import\s+["']([^"']+)["']/gi
+                ];
+                
+                patterns.forEach(pattern => {
+                    let match;
+                    while ((match = pattern.exec(content)) !== null) {
+                        const url = normalizeUrl(match[1], baseUrl);
+                        if (url && !url.startsWith('data:') && !url.startsWith('mailto:') && !url.startsWith('tel:')) {
+                            urls.add(url);
+                        }
+                    }
+                });
+            } else if (contentType.includes('text/css')) {
+                // CSS から URL を抽出
+                const patterns = [
+                    /url\(["']?([^"')]+)["']?\)/gi,
+                    /@import\s+["']([^"']+)["']/gi
+                ];
+                
+                patterns.forEach(pattern => {
+                    let match;
+                    while ((match = pattern.exec(content)) !== null) {
+                        const url = normalizeUrl(match[1], baseUrl);
+                        if (url && !url.startsWith('data:')) {
+                            urls.add(url);
+                        }
+                    }
+                });
+            } else if (contentType.includes('javascript')) {
+                // JavaScript から URL を抽出
+                const patterns = [
+                    /import\s+.*["']([^"']+)["']/gi,
+                    /require\s*\(\s*["']([^"']+)["']/gi,
+                    /fetch\s*\(\s*["']([^"']+)["']/gi
+                ];
+                
+                patterns.forEach(pattern => {
+                    let match;
+                    while ((match = pattern.exec(content)) !== null) {
+                        const url = normalizeUrl(match[1], baseUrl);
+                        if (url) {
+                            urls.add(url);
+                        }
+                    }
+                });
+            }
+            
+            return Array.from(urls);
+        }
+
+        function updateContentUrls(content, urlMappings, contentType = '') {
+            let updatedContent = content;
+            
+            for (const [originalUrl, localPath] of urlMappings.entries()) {
+                const patterns = [
+                    new RegExp(`href=["']${originalUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`, 'gi'),
+                    new RegExp(`src=["']${originalUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`, 'gi'),
+                    new RegExp(`url\\(["']?${originalUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']?\\)`, 'gi')
+                ];
+                
+                patterns.forEach(pattern => {
+                    updatedContent = updatedContent.replace(pattern, (match) => {
+                        if (match.includes('href=')) return `href="${localPath}"`;
+                        if (match.includes('src=')) return `src="${localPath}"`;
+                        return `url(${localPath})`;
+                    });
+                });
+            }
+            
+            return updatedContent;
+        }
+
+        async function downloadFile(url, baseUrl, urlMappings) {
+            if (downloadedFiles.has(url)) return;
+            
+            try {
+                log(`ダウンロード中: ${url}`, 'info');
+                const response = await fetchWithRetry(url);
+                const content = await response.text();
+                const contentType = response.headers.get('content-type') || '';
+                
+                // URL マッピングでコンテンツを更新
+                const updatedContent = updateContentUrls(content, urlMappings, contentType);
+                
+                const localPath = getLocalPath(url, baseUrl);
+                const fileType = getFileType(url, contentType);
+                
+                zip.file(localPath, updatedContent);
+                downloadedFiles.add(url);
+                stats[fileType]++;
+                
+                log(`✅ ${localPath} を保存`, 'success');
+                
+                // 新しいリソースを発見
+                const newUrls = extractResourceUrls(content, url, contentType);
+                for (const newUrl of newUrls) {
+                    if (!downloadedFiles.has(newUrl) && !urlMappings.has(newUrl)) {
+                        urlMappings.set(newUrl, getLocalPath(newUrl, baseUrl));
+                        await downloadFile(newUrl, baseUrl, urlMappings);
+                    }
+                }
+                
+            } catch (error) {
+                stats.errors++;
+                log(`❌ エラー: ${url} - ${error.message}`, 'error');
+            }
+        }
+
+        async function startCloning() {
+            const urlInput = document.getElementById('urlInput');
+            const url = urlInput.value.trim();
+            
+            if (!url) {
+                alert('URLを入力してください');
+                return;
+            }
+            
+            // リセット
+            zip = new JSZip();
+            downloadedFiles.clear();
+            stats = { html: 0, css: 0, js: 0, images: 0, other: 0, errors: 0 };
+            
+            const cloneBtn = document.getElementById('cloneBtn');
+            const progressSection = document.getElementById('progressSection');
+            const resultsSection = document.getElementById('resultsSection');
+            
+            // UI更新
+            cloneBtn.disabled = true;
+            cloneBtn.innerHTML = '<span class="spinner"></span> クローン中...';
+            progressSection.style.display = 'block';
+            resultsSection.style.display = 'none';
+            document.getElementById('statusLog').innerHTML = '';
+            
+            try {
+                updateProgress(10, 'メインページを取得中...');
+                log(`🚀 クローン開始: ${url}`, 'info');
+                
+                // URL マッピングを作成
+                const urlMappings = new Map();
+                
+                // メインページをダウンロード
+                await downloadFile(url, url, urlMappings);
+                
+                updateProgress(90, 'ファイルを最終処理中...');
+                
+                // README.md を追加
+                const readmeContent = `# ${new URL(url).hostname} - Website Clone
+
+This is a complete clone of ${url} created on ${new Date().toLocaleString()}.
+
+## Files Structure
+- HTML files: ${stats.html}
+- CSS files: ${stats.css}  
+- JavaScript files: ${stats.js}
+- Images: ${stats.images}
+- Other files: ${stats.other}
+
+## GitHub Pages Setup
+1. Upload all files to your GitHub repository
+2. Enable GitHub Pages in repository settings
+3. Your site will be available at: https://username.github.io/repository-name
+
+Generated by Website Cloner Tool
+`;
+                
+                zip.file('README.md', readmeContent);
+                
+                updateProgress(100, '完了！');
+                updateStats();
+                
+                log(`🎉 クローン完了！合計 ${downloadedFiles.size} ファイル`, 'success');
+                
+                resultsSection.style.display = 'block';
+                
+            } catch (error) {
+                log(`💥 クローンエラー: ${error.message}`, 'error');
+                alert(`エラーが発生しました: ${error.message}`);
+            } finally {
+                cloneBtn.disabled = false;
+                cloneBtn.innerHTML = '🔥 サイトをクローン開始';
+            }
+        }
+
+        async function downloadZip() {
+            try {
+                log('📦 ZIPファイルを生成中...', 'info');
+                const content = await zip.generateAsync({ type: 'blob' });
+                
+                const url = new URL(document.getElementById('urlInput').value);
+                const filename = `${url.hostname}-clone-${new Date().getTime()}.zip`;
+                
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(content);
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                log(`✅ ${filename} をダウンロード開始`, 'success');
+            } catch (error) {
+                alert(`ZIPファイルの生成エラー: ${error.message}`);
+            }
+        }
+
+        // Enter キーでクローン開始
+        document.getElementById('urlInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                startCloning();
+            }
+        });
+    </script>
+</body>
+</html>
